@@ -1,0 +1,242 @@
+# Trading Review Wiki 更新日志
+
+> 版本发布历史，按时间倒序排列。
+
+---
+
+## v0.5.3 — 2026-04-16
+
+### 修复：截图文件夹 PNG 图片无法显示 + 聊天图片引用路径错误
+
+- **问题 1**：在 `截图` 文件夹中点击 PNG 图片，预览面板黑屏/空白，无法显示。
+  - **根因**：`file-preview.tsx` 使用 Tauri 的 `convertFileSrc` 生成 asset URL，在 Windows 环境下该方式对本地图片的解析不稳定，常导致加载失败。
+  - **修复**：弃用 `convertFileSrc`，改为通过 Rust `readFileBinary` 读取图片二进制，再用浏览器原生 `URL.createObjectURL` 生成 Blob URL 进行展示。此方案同时应用于 `ImagePreview`、`VideoPreview`、`AudioPreview`。
+- **问题 2**：聊天窗口中用户发送的图片（保存为 `raw/截图/xxx.png`）在消息气泡里不显示。
+  - **根因**：`chat-message.tsx` 的 `img` 渲染组件把 markdown 中的相对路径 `raw/截图/xxx.png` 直接传给了 `convertFileSrc`，但 `convertFileSrc` 要求绝对路径，导致 URL 非法。
+  - **修复**：新增 `LocalImage` 组件，先根据 `project.path` 将相对路径解析为绝对路径，再通过 `readFileBinary` + `URL.createObjectURL` 加载并渲染。
+
+---
+
+## v0.5.2 — 2026-04-16
+
+### 新增：聊天图片上传 + 截图文件夹图片预览修复
+
+- **聊天窗口支持图片**：
+  1. `chat-input.tsx` 支持拖拽、粘贴、点击上传图片（最多 5 张，仅接受 `image/*`）。
+  2. 发送时自动将图片保存到 `raw/截图/YYYY-MM-DD-HH-MM-SS-filename.png`。
+  3. 在用户消息中插入 markdown 图片引用 `![name](raw/截图/xxx.png)`，聊天历史可持久化显示。
+  4. `chat-message.tsx` 的 `MarkdownContent` 新增 `img` 组件渲染，本地图片路径通过 `convertFileSrc` 安全转换，支持 Windows 反斜杠路径。
+- **修复截图文件夹图片无法显示**：
+  1. `file-preview.tsx` 中 `convertFileSrc` 接收的路径若含 Windows 反斜杠，会生成非法 asset URL。
+  2. 已在 `ImagePreview`、`VideoPreview`、`AudioPreview` 中统一将反斜杠替换为正斜杠后再调用 `convertFileSrc`。
+- **Rust 后端新增二进制写入命令**：`write_binary_file` command，支持前端直接把 `Uint8Array` 落盘到任意路径。
+
+---
+
+## v0.5.1 — 2026-04-16
+
+### 修复：Save to Wiki 后个股文件错误创建在 entities/ 目录
+
+- **问题**：用户点击聊天消息中的 **Save to Wiki** 后，`autoIngest` 的生成提示硬编码要求 LLM 把实体页放在 `wiki/entities/`，导致交易复盘项目中的个股档案被错误地写到了 `entities/`，而不是 `wiki/股票/`。
+- **修复**：
+  1. `ingest.ts` 的 `autoIngest` 在生成阶段前，先扫描 `wiki/` 下的实际子目录列表。
+  2. 将子目录列表传入 `buildGenerationPrompt`，替换原有的硬编码 `wiki/entities/` 和 `wiki/concepts/` 指令。
+  3. 新提示要求 LLM **根据 Wiki Schema 把页面放到正确的子目录**（如股票 → `wiki/股票/`、策略 → `wiki/策略/`、模式 → `wiki/模式/`、通用实体 → `wiki/entities/` 等）。
+
+---
+
+## v0.5.0 — 2026-04-16
+
+### 改进：System Prompt 明确告知 LLM 保存能力
+
+- **问题**：用户在聊天中要求 LLM "写入反思"时，LLM 回复"我没有手，不能直接创建文件"，导致体验断裂。
+- **修复**：在 `chat-panel.tsx` 的 system prompt 中新增 **"保存到 Wiki"** 规则：
+  1. 明确告知 LLM 每条回复旁边都有 **"Save to Wiki"** 按钮。
+  2. 当用户要求写入/保存/生成反思时，LLM 应直接输出完整 markdown，并引导用户点击该按钮保存。
+  3. 保留 `<!-- save-worthy: yes | 理由 -->` 的主动提示机制。
+
+---
+
+## v0.4.9 — 2026-04-16
+
+### 安全与稳定性修复（静态代码审查整改）
+
+- **【致命】Clip Server CSRF 防护**：本地剪藏服务 (`127.0.0.1:19827`) 原允许任意来源跨域访问，恶意网页可静默向用户知识库注入数据。现已实施 Token 鉴权：
+  1. App 启动时生成 32 字节随机 Token 保存在内存中。
+  2. 新增 Tauri command `get_clip_server_token()` 供前端获取。
+  3. Clip Server 所有端点（`/clip`、`/project`、`/projects`、`/clips/pending` 等）均要求请求头携带 `X-Clip-Token`，未携带或错误时返回 `401 Unauthorized`。
+  4. 前端 `App.tsx`、`clip-watcher.ts` 等所有调用 Clip Server 的位置均已同步携带 Token。
+- **【严重】修复 Rust unwrap() Panic 风险**：`clip_server.rs` 中 `Header::from_bytes(...).unwrap()` 和多处 `Mutex.lock().unwrap()` 在极端情况下可能导致后台线程 Panic。现已替换为安全的模式匹配和错误回退逻辑。
+- **【严重】修复大量空 Catch 块导致的静默失败**：`App.tsx`、`embedding.ts`、`sources-view.tsx` 中大量 `catch {}` 被改为至少输出 `console.warn`，确保异常可被排查。关键业务路径（如项目打开）保留原有用户提示。
+- **【一般】修复 Excel 金额解析浮点精度丢失**：`fs.rs` 中处理 `Data::Float` 时原使用 `*f == (*f as i64) as f64` 自行判断整数，在金融场景下存在 IEEE 754 截断风险。现已统一使用 `format!("{:.4}", f)` 保留精度并去除末尾无效零。
+- **【一般】修复 TypeScript catch (backendErr: any)**：`sources-view.tsx` 中交割单导入 fallback 的异常捕获类型从不安全的 `any` 改为 `unknown`，并使用类型保护提取错误信息。
+- **【提示】FIFO 边界场景文档化**：在 `trade-import.ts` 的 `calculateFifoPnL` 和 `isWithdrawn` 附近添加注释，明确说明当前 FIFO 算法不支持 A 股除权除息、送转股、配股、新股中签等特殊行为，提醒用户在导入前自行确认。
+
+---
+
+## v0.4.8 — 2026-04-16
+
+### 新增：快速复盘内置模板 + 编辑器手动保存
+
+- **快速复盘升级**：
+  1. 侧边栏 🖊️ 快速复盘现在内置完整的交易复盘模板（与 `raw/日复盘/日复盘模板.md` 保持一致），包含今日操作、市场环境、心态与纪律、关键反思、明日计划五个模块。
+  2. 去掉了原来的研究笔记、阅读笔记、日常随笔三个模板，简化为一键 **"创建今日复盘"**。
+  3. 创建的文件自动保存到 `raw/日复盘/YYYY-MM-DD-复盘.md`，若当日文件已存在则直接打开。
+- **编辑器手动保存按钮**：在 wiki 编辑器顶部标题栏新增显式 **"保存"** 按钮（位于关闭按钮左侧），点击立即落盘，保存成功后短暂显示 **"已保存"**。自动保存机制仍然保留。
+
+---
+
+## v0.4.7 — 2026-04-16
+
+### 修复：LLM 对话正常访问 raw/ 下的交割单/日复盘（含深度审查修复 + 模板骨架补全）
+
+- **根因**：v0.4.3 修复了 `searchWiki()` 的检索范围，但 `chat-panel.tsx` 构建 system prompt 时只取搜索前 10 名去竞争 budget，导致排第 11 名及以后的 raw 文件无法进入上下文。v0.4.4 用"强制注入"补丁临时解决，但破坏了三层架构设计。
+- **检索链路修复**：
+  1. 移除 P-1 强制注入逻辑，恢复 `raw/` 通过正常检索链路被访问。
+  2. 页面加载阶段改用全部 20 个搜索结果竞争 budget，不再只截断前 10 名。
+  3. 在 `search.ts` 中为 `raw/` 目录下的命中文件增加 `RAW_BONUS = +4` 分，确保交割单/日复盘在相关性排序中不会被 wiki 页面埋没。
+  4. **新增 Recency Boost**：文件名含 `YYYY-MM-DD` 的资料按日期近远加分（≤7天 +6，≤30天 +3，≤90天 +1）；若用户查询含"最近一个月"等时间词，范围内文件额外 +15 分，解决"最近交割单读到 2 月、3 月、4 月混排"的问题。
+- **代码审查中发现并修复的 bug**：
+  1. `chat-message.tsx` 补回缺失的 `Paperclip` import，修复 SourceRef 按钮导致的运行时崩溃。
+  2. `chat-panel.tsx` 增加 `addedPaths` 去重机制，防止同一文件被搜索命中和 Graph expansion 重复加载，避免浪费 budget。
+  3. `chat-message.tsx` 简化 wikilink fallback 解析逻辑，移除始终指向 `entities/` 的错误循环。
+  4. `search.ts` 修复 Vector Search fallback：不再硬编码 `entities/`、`concepts/` 等旧目录，改为在整个 `wiki/` 树中按文件名匹配（适配中文目录结构如 `股票/`、`策略/`）。
+  5. `search.ts` 扩展 raw 目录文件过滤规则，排除 `.exe`、`.zip`、`.db`、`.tmp` 等二进制/临时文件。
+  6. **搜索闪退**：`search-view.tsx` 的 `HighlightedText` 组件中 RegExp 带 `g` 标志重复 `test()` 导致 `lastIndex` 错乱，改用字符串比较修复。
+  7. **raw/ 检索性能闪退**：当 `raw/` 目录下积累 100+ 个历史文件时，`search.ts` 会逐个 `readFile()` 读取全部文件，Tauri IPC 阻塞主线程导致 Windows 判定程序无响应并强制关闭。现已限制每个 raw 子目录仅读取按文件名排序后的最新 20 个文件，避免 IPC 洪水。
+  8. **交割单收益计算严重错误**：部分券商 CSV 中买入金额为负数，导致 FIFO 成本算成负数、盈利虚高。`trade-import.ts` 与 `trade-stats.ts` 中统一对 `amount` 取 `Math.abs()`。
+  8. **markdown 表格解析丢记录**：`trade-stats.ts` 的 `parseTradeMarkdown` 误用 `.filter((s) => s.length > 0)` 去掉空单元格，导致空费用列的行被丢弃。改为仅去掉首尾 `|` 产生的空字符串。
+  9. **FIFO 买入成本不一致**：`trade-import.ts` 的 `calculateFifoPnL` 买入时错误地包含了印花税，现已与 `trade-stats.ts` 统一为 `|amount| + fee + transferFee`。
+- **项目创建模板修复（关键）**：
+  - **问题**：App 使用"交易复盘"模板创建项目时，只创建了空目录，没有复制任何初始文件。导致 `raw/日复盘/日复盘模板.md`、`wiki/index.md`、`wiki/策略/交易策略总览.md`、`wiki/进化/交易进化史.md`、`wiki/模式/市场模式库.md`、`wiki/错误/错误类型手册.md` 全部缺失，用户每次都要手动去模板仓库复制。
+  - **修复**：
+    1. 在 `WikiTemplate` 中新增 `files` 字段，支持定义模板专属的初始文件。
+    2. 在 `tradingTemplate` 中嵌入全部 6 个初始文件的内容。
+    3. 修改 `create-project-dialog.tsx`，创建项目时自动遍历并写入 `template.files` 中定义的所有文件。
+    4. 同步 `templates.ts` 中 `tradingTemplate.schema` 为最新版 `AGENTS.md`（含 Recency Boost 和 FIFO 规则说明）。
+
+## v0.4.6 — 2026-04-16（已弃用）
+
+> **弃用原因**：v0.4.6 安装包存在已知问题——`tradingTemplate.schema` 未被正确更新为最新版 `AGENTS.md`，导致新建项目的 `schema.md` 仍使用旧内容（缺少 Recency Boost 和 FIFO 规则说明）。该问题已在 **v0.4.7** 修复，请勿使用 v0.4.6 安装包。
+
+## v0.4.5 — 2026-04-16
+
+### 修复：LLM 对话正常访问 raw/ 下的交割单/日复盘
+
+- **根因**：v0.4.3 修复了 `searchWiki()` 的检索范围，但 `chat-panel.tsx` 构建 system prompt 时只取搜索前 10 名去竞争 budget，导致排第 11 名及以后的 raw 文件无法进入上下文。v0.4.4 用"强制注入"补丁临时解决，但破坏了三层架构设计。
+- **修复**：
+  1. 移除 P-1 强制注入逻辑，恢复 `raw/` 通过正常检索链路被访问。
+  2. 页面加载阶段改用全部 20 个搜索结果竞争 budget，不再只截断前 10 名。
+  3. 在 `search.ts` 中为 `raw/` 目录下的命中文件增加 `RAW_BONUS = +4` 分，确保交割单/日复盘在相关性排序中不会被 wiki 页面埋没。
+
+## v0.4.4 — 2026-04-15
+
+### 修复：LLM 对话仍然无法访问交割单/日复盘（强制注入上下文）
+
+- **根因**：v0.4.3 仅修复了 `searchWiki()` 的检索范围，但 `chat-panel.tsx` 构建 system prompt 时只取搜索前 10 名，交割单文件仍可能因排名或 budget 限制被挤出上下文。因此 LLM 依然"看不到"这些文件。
+- **修复**：在 `chat-panel.tsx` 的上下文组装逻辑中增加 **P-1 强制注入阶段**：每次对话前，无条件将 `raw/交割单/` 和 `raw/日复盘/` 下最近 7 个 `.md` 文件直接加载进 system prompt（最高优先级，不受搜索排名影响），确保 LLM 始终能基于最新交易记录回答。
+
+---
+
+## v0.4.3 — 2026-04-15
+
+### 修复：LLM 对话无法访问 raw/交割单 和 raw/日复盘
+
+- **根因**：`searchWiki()` 函数在构建 Chat 上下文时，只检索了 `wiki/` 和 `raw/sources/`，完全遗漏了 `raw/交割单/`、`raw/日复盘/`、`raw/研报新闻/` 等原始资料目录。因此 LLM 的 system prompt 中不会包含交割单和日复盘内容，导致用户提问时 LLM "看不到" 这些文件。
+- **修复**：将原始资料的检索范围从 `raw/sources` 扩大到整个 `raw/` 树，并过滤掉 `.png`、`.jpg`、`.mp4` 等二进制文件，确保所有文本类原始资料（交割单 markdown、日复盘、研报等）都能被纳入 Chat 上下文中。
+
+---
+
+## v0.4.2 — 2026-04-15
+
+### 修复：原始资料页面无法滚动
+
+- **根因**：`SourcesView` 中使用的 `ScrollArea` 组件在 flex 容器内缺少 `min-h-0`，导致 flex item 随内容自动撑高，视口永远不会小于内容高度，因此不显示滚动条。
+- **修复**：给 `ScrollArea` 添加 `min-h-0`，使其在 flex 布局中正确约束高度并启用滚动。
+
+---
+
+## v0.4.1 — 2026-04-15
+
+### 修复：交割单统计逻辑全面重构（FIFO 统一引擎）
+
+**问题根因：**
+- 之前 `parseTradeMarkdown` 用「卖出金额 - 买入金额 - 费用」估算单日盈亏，这实际上是**资金流动**（cash flow），不是真正的**已实现盈亏**。导致买入多的日子显示大亏，卖出多的日子显示大赚，严重误导。
+- 股票级别的盈亏也是按单条记录简单加减，没有考虑持仓成本。
+- 持仓成本与盈亏统计分别维护，逻辑存在不一致风险。
+
+**修复方案：**
+- 在 `src/lib/trade-stats.ts` 中引入统一的 `runFifoEngine` 引擎，基于**先进先出（FIFO）**计算：
+  1. **每日已实现盈亏** — 仅在卖出日产生盈亏，按历史买入成本精确计算
+  2. **每只股票累计已实现盈亏** — 同一只股票跨日多次买卖也能准确归集
+  3. **当前持仓成本与浮动盈亏** — 复用同一套 FIFO 批次数据
+- `computeDashboardStats` 现在会**全局回溯**所有交割单，用 FIFO 结果回填每一天、每一只股票、每一个月的真实盈亏。
+- Dashboard 中的「净盈亏」列标题统一改为「**已实现盈亏**」，语义更准确。
+- `plan-audit.ts` 也统一调用 `computeDashboardStats`，确保 LLM 看到的每日盈亏数据准确。
+
+**验证：**
+- 全部 21 个单元测试通过（含更新后的 FIFO 盈亏断言）
+- TypeScript 0 错误
+- Vite + Tauri build 成功
+
+---
+
+## v0.4.0 — 2026-04-15
+
+### 新增功能：交易计划审计
+
+在左侧导航栏新增了「**计划审计**」独立入口（位于「统计看板」与「深度复盘」之间）。
+
+**功能说明：**
+- AI 自动读取 `raw/日复盘/` 中的「**明日计划**」，与次日（或最近交易日）的实际交割单进行对比。
+- 输出 5 种执行状态标签：
+  - 🟢 **完全执行** — 计划与实际一致
+  - 🟡 **部分执行** — 有计划但执行不完整，或有额外操作
+  - 🔴 **严重偏离** — 违反计划（如计划观望却追高、计划卖出却买入等）
+  - 🔵 **无交易** — 有计划但次日未交易
+  - ⚪ **即兴交易** — 无计划但有交易
+- 支持选择审计范围：最近 7 天 / 30 天 / 90 天 / 一年。
+- 顶部展示 4 个核心指标：审计天数、完全执行天数、严重偏离天数、即兴交易次数。
+- 每条审计结果均可展开，查看 AI 分析详情、原始计划文本与实际交易摘要。
+
+**使用前提：**
+- 需要在「设置」中配置 LLM（OpenAI / Anthropic / Ollama / 自定义端点）。
+- 需要在 `raw/日复盘/` 中写有包含「## 五、明日计划」的复盘文件，并导入对应的交割单。
+
+---
+
+## v0.3.1 — 2026-04-15
+
+### 修复：Dashboard 当前持仓页白屏（React Error #310）
+
+- **根因**：`useMemo` 被放置在条件提前返回（`if (loading)` / `if (!project)`）之后，当状态变化导致提前返回时，React Hook 调用顺序不一致，触发 Error #310（Rendered more hooks than during the previous render）。
+- **修复**：将 `useMemo` 与价格记录构造逻辑全部移至组件顶部，确保在所有条件分支之前执行。
+
+---
+
+## v0.3.0 — 2026-04-15
+
+### 新增功能：当前持仓（Holdings Dashboard）
+
+在「统计看板」中新增「**当前持仓**」标签页。
+
+**功能说明：**
+- 基于 FIFO 先进先出算法，自动从全部历史交割单计算出当前持有的股票、数量与成本均价。
+- 买入成本包含手续费与过户费，卖出时按最早买入批次扣减持仓。
+- 表格中支持手动输入每只股票的市场价格，实时计算：
+  - **持仓市值** = 市价 × 持股数
+  - **浮动盈亏** = (市价 - 成本均价) × 持股数
+- 顶部展示持仓 KPI：持仓股票数、持仓总市值、持仓总成本、总浮动盈亏。
+
+---
+
+## 安装包说明
+
+每次构建会生成两个安装文件：
+
+| 文件名 | 说明 |
+|--------|------|
+| `Trading Review Wiki_x.x.x_x64-setup.exe` | **推荐** — NSIS 安装程序，支持自定义安装路径与卸载 |
+| `Trading Review Wiki_x.x.x_x64_en-US.msi` | Windows Installer 包，适合企业批量部署 |
+
+> 所有安装包均不含数字签名，首次安装时 Windows 可能会弹出「未知发布者」提示，点击「更多信息」→「仍要运行」即可。
