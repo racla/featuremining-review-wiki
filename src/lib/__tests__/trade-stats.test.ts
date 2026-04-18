@@ -82,4 +82,62 @@ describe("Trade Stats", () => {
     expect(catl!.tradeCount).toBe(2)
     expect(catl!.netPnL).toBeCloseTo(1009.95, 1)
   })
+
+  it("flags hasUnknownCost when selling without prior holdings", () => {
+    // 第一天就卖出 1000 股，没有买入记录 → 超卖
+    const sellOnlyMd = `# 交割单 — 2025-04-14
+
+| 时间 | 代码 | 名称 | 方向 | 数量 | 价格 | 金额 | 手续费 | 印花税 | 过户费 |
+|------|------|------|------|------|------|------|--------|--------|--------|
+| 09:31:22 | 000001 | 平安银行 | 卖出 | 1000 | 10.80 | 10,800.00 | 5.40 | 10.80 | 0.10 |
+
+## 汇总
+- 成交笔数：1
+`
+    const day = parseTradeMarkdown("2025-04-14", sellOnlyMd)
+    const { overall, unknownCostSales } = computeDashboardStats([day])
+
+    expect(overall.hasUnknownCost).toBe(true)
+    expect(overall.totalUnknownQty).toBe(1000)
+    expect(overall.totalNetPnL).toBeCloseTo(0, 2) // 没有匹配成本，盈亏为 0
+    expect(unknownCostSales.get("000001")?.[0].quantity).toBe(1000)
+  })
+
+  it("partially matches FIFO when sell exceeds holdings", () => {
+    // 买入 500，卖出 1000 → 500 正常匹配，500 超卖
+    const buyMd = `# 交割单 — 2025-04-14
+
+| 时间 | 代码 | 名称 | 方向 | 数量 | 价格 | 金额 | 手续费 | 印花税 | 过户费 |
+|------|------|------|------|------|------|------|--------|--------|--------|
+| 09:31:22 | 000001 | 平安银行 | 买入 | 500 | 10.50 | 5,250.00 | 2.63 | 0.00 | 0.05 |
+
+## 汇总
+- 成交笔数：1
+`
+    const sellMd = `# 交割单 — 2025-04-15
+
+| 时间 | 代码 | 名称 | 方向 | 数量 | 价格 | 金额 | 手续费 | 印花税 | 过户费 |
+|------|------|------|------|------|------|------|--------|--------|--------|
+| 14:30:00 | 000001 | 平安银行 | 卖出 | 1000 | 10.80 | 10,800.00 | 5.40 | 10.80 | 0.10 |
+
+## 汇总
+- 成交笔数：1
+`
+    const day1 = parseTradeMarkdown("2025-04-14", buyMd)
+    const day2 = parseTradeMarkdown("2025-04-15", sellMd)
+    const { overall, stocks, unknownCostSales } = computeDashboardStats([day1, day2])
+
+    expect(overall.hasUnknownCost).toBe(true)
+    expect(overall.totalUnknownQty).toBe(500)
+    // 500 匹配部分的盈亏（正常计算）
+    expect(overall.totalNetPnL).not.toBe(0)
+    expect(overall.totalNetPnL).toBeGreaterThan(0)
+
+    const stock = stocks.find((s) => s.code === "000001")
+    expect(stock).toBeDefined()
+    expect(stock!.netPnL).toBeGreaterThan(0)
+
+    // 超卖部分单独记录
+    expect(unknownCostSales.get("000001")?.[0].quantity).toBe(500)
+  })
 })

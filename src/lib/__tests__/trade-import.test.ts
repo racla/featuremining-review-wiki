@@ -100,4 +100,53 @@ describe("Trade Import", () => {
     ].join("\n")
     expect(() => parseTradeCSV(csv)).toThrow("无法找到表头行")
   })
+
+  it("infers direction from totalCost sign when direction column is absent", () => {
+    const csv = [
+      "日期,证券代码,证券名称,成交数量,成交价格,成交金额,发生金额",
+      "2025-04-14,000001,平安银行,100,10,1000,-1005",
+      "2025-04-15,000001,平安银行,100,10,1000,995",
+    ].join("\n")
+    const records = parseTradeCSV(csv)
+    expect(records).toHaveLength(2)
+    expect(records[0].direction).toBe("buy")
+    expect(records[1].direction).toBe("sell")
+  })
+
+  it("filters non-trade records (dividends, bonuses, rights)", () => {
+    // 方向列和摘要列分开，避免 direction fallback 误判
+    const csv = [
+      "日期,时间,证券代码,证券名称,买卖方向,成交数量,成交价格,成交金额,手续费,印花税,过户费,发生金额,备注",
+      "2025-04-14,09:31:00,000001,平安银行,买入,100,10,1000,1,0,0,1001,",
+      "2025-04-14,10:00:00,000001,平安银行,,0,0,0,0,0,0,0,红利入账",
+      "2025-04-14,11:00:00,000001,平安银行,,0,0,0,0,0,0,0,送股",
+      "2025-04-15,09:31:00,000001,平安银行,卖出,100,11,1100,1,1,0,1098,",
+    ].join("\n")
+    const records = parseTradeCSV(csv)
+    expect(records).toHaveLength(2)
+    expect(records[0].direction).toBe("buy")
+    expect(records[1].direction).toBe("sell")
+  })
+
+  it("throws on validation failure for malformed data", () => {
+    const csv = [
+      "日期,证券代码,证券名称,买卖方向,成交数量,成交价格,成交金额",
+      "not-a-date,ABC123,Test,未知,0,0,0",
+    ].join("\n")
+    expect(() => parseTradeCSV(csv)).toThrow("交割单解析异常")
+  })
+
+  it("finds header row beyond line 20", () => {
+    // 模拟券商文件：前面有账户信息、空行，表头在第25行
+    const lines: string[] = []
+    for (let i = 0; i < 24; i++) {
+      lines.push(`账户信息行${i + 1},,,,,,,,,,,`)
+    }
+    lines.push("日期,时间,证券代码,证券名称,买卖方向,成交数量,成交价格,成交金额,手续费,印花税,过户费,发生金额")
+    lines.push("2025-04-14,09:31:00,000001,平安银行,买入,100,10,1000,1,0,0,1001")
+    const csv = lines.join("\n")
+    const records = parseTradeCSV(csv)
+    expect(records).toHaveLength(1)
+    expect(records[0].code).toBe("000001")
+  })
 })

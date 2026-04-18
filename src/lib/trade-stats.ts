@@ -216,7 +216,9 @@ function runFifoEngine(records: TradeStatRecord[]): FifoResult {
         hasUnknownCost = true
         const netProceeds = r.amount - r.fee - r.stampTax - r.transferFee
         const unk = unknownCostSales.get(r.code) ?? []
-        unk.push({ date: r.date, quantity: remaining, proceeds: netProceeds })
+        // 只记录超卖部分对应的净收入（按比例）
+        const unkProceeds = netProceeds * (remaining / r.quantity)
+        unk.push({ date: r.date, quantity: remaining, proceeds: unkProceeds })
         unknownCostSales.set(r.code, unk)
 
         // 只计算已知成本匹配部分的盈亏（按成交额比例分摊费用）

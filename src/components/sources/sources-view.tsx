@@ -268,9 +268,7 @@ export function SourcesView() {
 
         // 合并历史记录，用 FIFO 计算每日已实现盈亏
         const allRecords = [...historyRecords, ...records]
-        const fifoResult = calculateFifoPnL(allRecords)
-        const datePnL = fifoResult.datePnL
-        const hasUnknownCost = fifoResult.hasUnknownCost
+        const { datePnL } = calculateFifoPnL(allRecords)
 
         const byDate = groupRecordsByDate(records)
 

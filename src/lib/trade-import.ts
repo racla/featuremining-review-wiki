@@ -162,7 +162,7 @@ export function parseTradeRecords(rows: unknown[][]): TradeRecord[] {
 
   const headerInfo = findHeaderRow(rows)
   if (!headerInfo) {
-    throw new Error("无法找到表头行。请确保文件前20行内包含“证券代码”、“日期”等列名。")
+    throw new Error("无法找到表头行。请确保文件前50行内包含“证券代码”、“日期”等列名。")
   }
 
   const { rowIndex, headers } = headerInfo
