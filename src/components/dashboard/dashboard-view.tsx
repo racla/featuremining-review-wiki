@@ -12,7 +12,9 @@ import {
   type StockStat,
   type OverallStats,
   type Holding,
+  type OpeningPosition,
 } from "@/lib/trade-stats"
+import { loadOpeningPositions, saveOpeningPositions } from "@/lib/trade-persist"
 import {
   ResponsiveContainer,
   BarChart,
@@ -23,8 +25,9 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts"
-import { TrendingUp, TrendingDown, Activity, Percent, Calendar, BarChart3, Wallet, Package } from "lucide-react"
+import { TrendingUp, TrendingDown, Activity, Percent, Calendar, BarChart3, Wallet, Package, Trash2, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 export function DashboardView() {
   const project = useWikiStore((s) => s.project)
@@ -33,6 +36,15 @@ export function DashboardView() {
   const [dayStats, setDayStats] = useState<TradeDayStats[]>([])
   const [activeTab, setActiveTab] = useState<"stats" | "holdings">("stats")
   const [marketPrices, setMarketPrices] = useState<Record<string, string>>({})
+  const [openingPositions, setOpeningPositions] = useState<OpeningPosition[]>([])
+  const [showOpForm, setShowOpForm] = useState(false)
+  const [opForm, setOpForm] = useState<OpeningPosition>({
+    code: "",
+    name: "",
+    quantity: 0,
+    avgCost: 0,
+    asOfDate: new Date().toISOString().slice(0, 10),
+  })
 
   useEffect(() => {
     async function load() {
@@ -67,15 +79,26 @@ export function DashboardView() {
       }
 
       setDayStats(statsList)
+
+      // 加载期初持仓
+      if (project) {
+        try {
+          const ops = await loadOpeningPositions(normalizePath(project.path))
+          setOpeningPositions(ops)
+        } catch (err) {
+          console.warn("[Dashboard] Failed to load opening positions:", err)
+        }
+      }
+
       setLoading(false)
     }
 
     load()
   }, [project])
 
-  const { monthly, stocks, overall, unknownCostSales } = useMemo(
-    () => computeDashboardStats(dayStats),
-    [dayStats]
+  const { monthly, stocks, overall } = useMemo(
+    () => computeDashboardStats(dayStats, openingPositions),
+    [dayStats, openingPositions]
   )
 
   const hasUnknownCost = overall.hasUnknownCost
@@ -85,11 +108,35 @@ export function DashboardView() {
     const n = parseFloat(val)
     if (!isNaN(n) && n > 0) priceRecord[code] = n
   }
-  const holdings = useMemo(() => calculateCurrentHoldings(dayStats, priceRecord), [dayStats, marketPrices])
+  const holdings = useMemo(() => calculateCurrentHoldings(dayStats, priceRecord, openingPositions), [dayStats, marketPrices, openingPositions])
 
   const winRate = overall.winDays + overall.lossDays + overall.breakEvenDays > 0
     ? ((overall.winDays / (overall.winDays + overall.lossDays + overall.breakEvenDays)) * 100).toFixed(1)
     : "0.0"
+
+  async function handleAddOpeningPosition() {
+    if (!project || !opForm.code || !opForm.name || opForm.quantity <= 0 || opForm.avgCost <= 0) return
+    const next = [...openingPositions, { ...opForm }]
+    setOpeningPositions(next)
+    try {
+      await saveOpeningPositions(normalizePath(project.path), next)
+    } catch (err) {
+      console.error("Failed to save opening positions:", err)
+    }
+    setShowOpForm(false)
+    setOpForm({ code: "", name: "", quantity: 0, avgCost: 0, asOfDate: new Date().toISOString().slice(0, 10) })
+  }
+
+  async function handleRemoveOpeningPosition(index: number) {
+    if (!project) return
+    const next = openingPositions.filter((_, i) => i !== index)
+    setOpeningPositions(next)
+    try {
+      await saveOpeningPositions(normalizePath(project.path), next)
+    } catch (err) {
+      console.error("Failed to save opening positions:", err)
+    }
+  }
 
   if (loading) {
     return (
@@ -323,6 +370,100 @@ export function DashboardView() {
                   holdings.reduce((s, h) => s + h.unrealizedPnL, 0) >= 0 ? "positive" : "negative"
                 }
               />
+            </div>
+
+            {/* 期初持仓管理 */}
+            <div className="rounded-xl border bg-card p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-semibold">期初持仓</h3>
+                <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setShowOpForm((v) => !v)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  {showOpForm ? "取消" : "添加"}
+                </Button>
+              </div>
+
+              {showOpForm && (
+                <div className="mb-4 grid gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-5">
+                  <Input
+                    placeholder="代码"
+                    value={opForm.code}
+                    onChange={(e) => setOpForm((p) => ({ ...p, code: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                  <Input
+                    placeholder="名称"
+                    value={opForm.name}
+                    onChange={(e) => setOpForm((p) => ({ ...p, name: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="数量"
+                    value={opForm.quantity || ""}
+                    onChange={(e) => setOpForm((p) => ({ ...p, quantity: parseInt(e.target.value) || 0 }))}
+                    className="h-8 text-sm"
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="成本单价"
+                    value={opForm.avgCost || ""}
+                    onChange={(e) => setOpForm((p) => ({ ...p, avgCost: parseFloat(e.target.value) || 0 }))}
+                    className="h-8 text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={opForm.asOfDate}
+                      onChange={(e) => setOpForm((p) => ({ ...p, asOfDate: e.target.value }))}
+                      className="h-8 text-sm"
+                    />
+                    <Button size="sm" className="h-8 px-2 text-xs" onClick={handleAddOpeningPosition}>
+                      保存
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {openingPositions.length === 0 ? (
+                <div className="py-2 text-center text-sm text-muted-foreground">
+                  无期初持仓。若统计出现"缺少期初持仓"警告，可在此录入。
+                </div>
+              ) : (
+                <div className="overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-card">
+                      <tr className="border-b text-left text-muted-foreground">
+                        <th className="py-2 pr-4">代码</th>
+                        <th className="py-2 pr-4">名称</th>
+                        <th className="py-2 pr-4 text-right">数量</th>
+                        <th className="py-2 pr-4 text-right">成本单价</th>
+                        <th className="py-2 pr-4 text-right">截止日期</th>
+                        <th className="py-2 text-right">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {openingPositions.map((op, i) => (
+                        <tr key={`${op.code}-${i}`} className="border-b border-border/50 last:border-0">
+                          <td className="py-2 pr-4 font-medium">{op.code}</td>
+                          <td className="py-2 pr-4">{op.name}</td>
+                          <td className="py-2 pr-4 text-right">{op.quantity}</td>
+                          <td className="py-2 pr-4 text-right">{formatMoney(op.avgCost)}</td>
+                          <td className="py-2 pr-4 text-right">{op.asOfDate}</td>
+                          <td className="py-2 text-right">
+                            <button
+                              onClick={() => handleRemoveOpeningPosition(i)}
+                              className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl border bg-card p-4">
