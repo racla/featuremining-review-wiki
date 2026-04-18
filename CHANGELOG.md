@@ -28,6 +28,9 @@
 
 ### 修复
 
+- **卖出记录被过滤**：`parseDirection` 扩展支持 `-`、`-1`、`负`、`融券卖出`、`担保品卖出` 等卖出方向；增加 quantity 负数推断方向 fallback；quantity 统一取绝对值。
+- **Wiki 英文目录问题**：`buildGenerationPrompt` 增加强制规则，禁止 LLM 在中文目录存在时创建英文等价目录；已迁移现有英文目录文件到中文目录。
+- **交互修复**：移除 `setOpeningPositions([])` 残留引用；交割单导入增加空记录/失败/不支持格式的明确提示；多文件导入汇总结果。
 - `normalizeDate` 非日期输入返回 `""`（原返回脏字符串）。
 - `normalizeDate` short-date 增加月份/日期范围校验，防止 `04/15/25` 被误解析为 `2004-15-25`。
 - Dashboard `useEffect` 增加 `cancelled` flag + `dataVersion` 依赖，防止快速切换项目时的 race condition。
