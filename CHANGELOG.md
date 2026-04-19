@@ -4,6 +4,24 @@
 
 ---
 
+## v0.5.7 — 2026-04-18
+
+### 修复
+
+- **卖出记录被过滤**：`parseDirection` 扩展支持 `-`、`-1`、`负`、`融券卖出`、`担保品卖出` 等卖出方向；增加 quantity 负数推断方向 fallback；quantity 统一取绝对值。
+- **Wiki 英文目录问题**：`buildGenerationPrompt` 增加强制规则，禁止 LLM 在中文目录存在时创建英文等价目录；已迁移现有英文目录文件到中文目录。
+- **Graph View 节点颜色**：增加 `entity`/`concept`/`comparison`/`query`/`synthesis` 英文类型的颜色映射，解决知识树全部显示为 "other" 的问题。
+- **frontmatter type 强制中文值**：LLM 生成页面时，若 Schema 定义了中文类型（策略/股票/模式等），必须使用中文值而非英文 `entity`/`concept`。
+- 交互修复：移除 `setOpeningPositions([])` 残留引用；交割单导入增加空记录/失败/不支持格式的明确提示；多文件导入汇总结果。
+
+### 已知问题
+
+- **macOS 安装提示"已损坏"**：当前版本缺少 Apple Developer 代码签名，macOS Gatekeeper 会阻止安装。
+  - **绕过方法**：安装前在终端执行 `xattr -c /Applications/Trading\ Review\ Wiki.app`，或右键点击 app 选择"打开"。
+  - 正式签名需要 Apple Developer 账号和 Notarization 配置，后续版本将解决。
+
+---
+
 ## v0.5.6 — 2026-04-18
 
 ### 新增：交割单导入与统计看板
