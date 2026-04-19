@@ -418,6 +418,8 @@ function buildGenerationPrompt(schema: string, purpose: string, index: string, s
     "---",
     "```",
     "",
+    "IMPORTANT: The exact `type` values MUST follow the Wiki Schema above. If the schema defines Chinese types (e.g. `策略`, `股票`, `模式`, `错误`, `市场环境`, `进化`, `总结`), use those Chinese values. Do NOT use English types like `entity` or `concept` when Chinese equivalents are defined in the schema.",
+    "",
     `The \`sources\` field MUST always contain "${sourceFileName}" — this links the wiki page back to the original uploaded document.`,
     "",
     "Other rules:",
