@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react"
+import { useRef, useState, useCallback, useMemo, useEffect } from "react"
 import { Send, Square, Paperclip, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -86,6 +86,14 @@ export function ChatInput({ onSend, onStop, isStreaming, placeholder }: ChatInpu
     setImages((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
+  // Stable object URLs for image previews — revoked on unmount or when images change
+  const imageUrls = useMemo(() => images.map((file) => URL.createObjectURL(file)), [images])
+  useEffect(() => {
+    return () => {
+      imageUrls.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [imageUrls])
+
   return (
     <div
       className={`border-t bg-background transition-colors ${isDragging ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}
@@ -98,7 +106,7 @@ export function ChatInput({ onSend, onStop, isStreaming, placeholder }: ChatInpu
           {images.map((file, i) => (
             <div key={`${file.name}-${i}`} className="relative shrink-0 rounded-md border bg-muted/50 p-1">
               <img
-                src={URL.createObjectURL(file)}
+                src={imageUrls[i]}
                 alt={file.name}
                 className="h-16 w-16 rounded object-cover"
               />

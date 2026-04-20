@@ -293,3 +293,42 @@
     @apply font-sans;
     }
 }
+
+/* Override Milkdown nord theme light-mode elements when app is in dark mode.
+   The nord theme uses @media (prefers-color-scheme: dark) which does not
+   match our manual theme switching, causing white/light backgrounds in
+   dark themes. */
+.dark .milkdown-theme-nord.prose :where(td, th):nth-child(odd),
+[data-theme] .milkdown-theme-nord.prose :where(td, th):nth-child(odd) {
+  background-color: var(--color-gray-900);
+}
+
+.dark .milkdown-theme-nord.prose tr,
+[data-theme] .milkdown-theme-nord.prose tr {
+  border-color: var(--color-gray-600);
+}
+
+.dark .milkdown-theme-nord pre,
+[data-theme] .milkdown-theme-nord pre {
+  background-color: var(--color-gray-800);
+}
+
+.dark .milkdown-theme-nord code:not(pre code),
+[data-theme] .milkdown-theme-nord code:not(pre code) {
+  background-color: var(--color-gray-700);
+}
+
+.dark .milkdown-theme-nord blockquote,
+[data-theme] .milkdown-theme-nord blockquote {
+  border-color: var(--color-nord10);
+}
+
+.dark .milkdown-theme-nord,
+[data-theme] .milkdown-theme-nord {
+  color: inherit;
+}
+
+.dark .milkdown-theme-nord .ProseMirror,
+[data-theme] .milkdown-theme-nord .ProseMirror {
+  background-color: transparent;
+}

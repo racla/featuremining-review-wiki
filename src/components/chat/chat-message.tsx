@@ -114,6 +114,13 @@ export function ChatMessage({ message, isLastAssistant, onRegenerate }: ChatMess
 
 function CopyButton({ content }: { content: string }) {
   const [copied, setCopied] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
 
   const handleCopy = useCallback(async () => {
     // Strip HTML comments and thinking blocks before copying
@@ -125,7 +132,8 @@ function CopyButton({ content }: { content: string }) {
 
     await navigator.clipboard.writeText(clean)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setCopied(false), 2000)
   }, [content])
 
   return (
@@ -146,6 +154,13 @@ function SaveToWikiButton({ content, visible }: { content: string; visible: bool
   const setFileTree = useWikiStore((s) => s.setFileTree)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
 
   const handleSave = useCallback(async () => {
     if (!project || saving) return
@@ -162,7 +177,24 @@ function SaveToWikiButton({ content, visible }: { content: string; visible: bool
         .replace(/\s+/g, "-")
         .slice(0, 50)
       const date = new Date().toISOString().slice(0, 10)
-      const fileName = `${slug}-${date}.md`
+      const baseFileName = `${slug}-${date}.md`
+
+      // Ensure unique file name to avoid overwriting existing files
+      let fileName = baseFileName
+      let counter = 1
+      while (true) {
+        const testPath = `${pp}/wiki/queries/${fileName}`
+        try {
+          await readFile(testPath)
+          // File exists, increment counter and try again
+          const base = baseFileName.replace(/\.md$/, "")
+          fileName = `${base}-${counter}.md`
+          counter++
+        } catch {
+          // File doesn't exist, we can use this name
+          break
+        }
+      }
       const filePath = `${pp}/wiki/queries/${fileName}`
 
       // Strip hidden sources comment and thinking blocks from content
@@ -192,7 +224,8 @@ function SaveToWikiButton({ content, visible }: { content: string; visible: bool
       } catch {
         indexContent = "# Wiki Index\n\n## Queries\n"
       }
-      const entry = `- [[queries/${slug}-${date}|${title}]]`
+      const wikiLinkName = fileName.replace(/\.md$/, "")
+      const entry = `- [[queries/${wikiLinkName}|${title}]]`
       if (indexContent.includes("## Queries")) {
         indexContent = indexContent.replace(
           /(## Queries\n)/,
@@ -220,7 +253,8 @@ function SaveToWikiButton({ content, visible }: { content: string; visible: bool
       useWikiStore.getState().bumpDataVersion()
 
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setSaved(false), 2000)
 
       // Full auto-ingest: extract entities, concepts, cross-references from saved content
       const llmConfig = useWikiStore.getState().llmConfig

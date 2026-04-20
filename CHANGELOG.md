@@ -4,6 +4,19 @@
 
 ---
 
+## v0.6.2 — 2026-04-19
+
+### 修复（Markdown 暗色主题 + Save to Wiki 覆盖 + 交互清理）
+
+- **修复 Milkdown 编辑器白底白字**：Milkdown nord 主题使用 `@media (prefers-color-scheme: dark)` 媒体查询，在手动主题切换下不生效，导致表格/代码块使用浅色背景。已添加 `.dark` / `[data-theme]` 覆盖规则强制暗色样式。
+- **修复文件预览暗色主题**：`file-preview.tsx` 和 `wiki-editor.tsx` 容器显式添加 `bg-background text-foreground`，确保继承正确颜色。
+- **修复 Save to Wiki 文件覆盖**：同一天多次保存相同标题的内容时，文件名完全相同导致覆盖。已添加自动递增序号（`-1`、`-2`…），并修复 `index.md` 中的 wikilink。
+- **修复 setTimeout 泄漏**：CopyButton、SaveToWikiButton、PreviewPanel 手动保存、GraphView MutationObserver 中的 setTimeout 均未在组件卸载时清理。
+- **修复聊天输入内存泄漏**：图片预览使用 `URL.createObjectURL` 但从未 `revokeObjectURL`，每次添加图片都会泄漏 blob 内存。
+- **修复聊天自动滚动干扰**：消息变化时强制滚动到底部，打断用户查看历史消息。改为仅在用户已在底部（< 100px）时才自动滚动。
+
+---
+
 ## v0.6.1 — 2026-04-19
 
 ### 紧急修复

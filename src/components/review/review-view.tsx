@@ -72,7 +72,22 @@ export function ReviewView() {
         const title = firstLine.slice(0, 60)
         const slug = title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)
         const date = new Date().toISOString().slice(0, 10)
-        const fileName = `${slug}-${date}.md`
+        const baseFileName = `${slug}-${date}.md`
+
+        // Ensure unique file name to avoid overwriting existing files
+        let fileName = baseFileName
+        let counter = 1
+        while (true) {
+          const testPath = `${pp}/wiki/queries/${fileName}`
+          try {
+            await readFile(testPath)
+            const base = baseFileName.replace(/\.md$/, "")
+            fileName = `${base}-${counter}.md`
+            counter++
+          } catch {
+            break
+          }
+        }
         const filePath = `${pp}/wiki/queries/${fileName}`
 
         const frontmatter = `---\ntype: query\ntitle: "${title.replace(/"/g, '\\"')}"\ncreated: ${date}\ntags: []\n---\n\n`
@@ -82,7 +97,8 @@ export function ReviewView() {
         const indexPath = `${pp}/wiki/index.md`
         let indexContent = ""
         try { indexContent = await readFile(indexPath) } catch { indexContent = "# Wiki Index\n" }
-        const entry = `- [[queries/${slug}-${date}|${title}]]`
+        const wikiLinkName = fileName.replace(/\.md$/, "")
+        const entry = `- [[queries/${wikiLinkName}|${title}]]`
         if (indexContent.includes("## Queries")) {
           indexContent = indexContent.replace(/(## Queries\n)/, `$1${entry}\n`)
         } else {

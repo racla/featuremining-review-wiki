@@ -215,7 +215,22 @@ export async function saveResearchDraft(
   try {
     const date = new Date().toISOString().slice(0, 10)
     const slug = task.topic.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)
-    const fileName = `research-${slug}-${date}.md`
+    const baseFileName = `research-${slug}-${date}.md`
+
+    // Ensure unique file name to avoid overwriting existing files
+    let fileName = baseFileName
+    let counter = 1
+    while (true) {
+      const testPath = `${pp}/wiki/queries/${fileName}`
+      try {
+        await readFile(testPath)
+        const base = baseFileName.replace(/\.md$/, "")
+        fileName = `${base}-${counter}.md`
+        counter++
+      } catch {
+        break
+      }
+    }
     const filePath = `${pp}/wiki/queries/${fileName}`
 
     const references = task.webResults

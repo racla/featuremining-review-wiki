@@ -14,6 +14,7 @@ export function PreviewPanel() {
   const setFileContent = useWikiStore((s) => s.setFileContent)
   const setSelectedFile = useWikiStore((s) => s.setSelectedFile)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const manualSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
   const currentContentRef = useRef(fileContent)
 
@@ -59,7 +60,8 @@ export function PreviewPanel() {
     try {
       await writeFile(selectedFile, currentContentRef.current)
       setSaveStatus("saved")
-      setTimeout(() => setSaveStatus("idle"), 1500)
+      if (manualSaveTimerRef.current) clearTimeout(manualSaveTimerRef.current)
+      manualSaveTimerRef.current = setTimeout(() => setSaveStatus("idle"), 1500)
     } catch (err) {
       console.error("Failed to save:", err)
       setSaveStatus("idle")
@@ -69,6 +71,7 @@ export function PreviewPanel() {
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      if (manualSaveTimerRef.current) clearTimeout(manualSaveTimerRef.current)
     }
   }, [])
 

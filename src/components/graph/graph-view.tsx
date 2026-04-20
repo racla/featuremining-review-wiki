@@ -328,6 +328,7 @@ export function GraphView() {
   const [sigmaKey, setSigmaKey] = useState(0)
   const [isResizing, setIsResizing] = useState(false)
   const graphContainerRef = useRef<HTMLDivElement>(null)
+  const dragEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Research confirmation dialog
   const [researchDialog, setResearchDialog] = useState<{
     loading: boolean
@@ -452,14 +453,18 @@ export function GraphView() {
       }
       if (!dragging && isResizing) {
         // Drag ended — remount sigma after a tick
-        setTimeout(() => {
+        if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current)
+        dragEndTimerRef.current = setTimeout(() => {
           setSigmaKey((k) => k + 1)
           setIsResizing(false)
         }, 50)
       }
     })
     observer.observe(document.body, { attributes: true, attributeFilter: ["data-panel-resizing"] })
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      if (dragEndTimerRef.current) clearTimeout(dragEndTimerRef.current)
+    }
   }, [isResizing])
 
   // Count nodes by type for legend

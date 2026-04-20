@@ -146,10 +146,16 @@ export function ChatPanel() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when messages change or streaming content updates
+  // Only scroll if user is already near the bottom to avoid interrupting history reading
   useEffect(() => {
     const container = scrollContainerRef.current
     if (container) {
-      container.scrollTop = container.scrollHeight
+      const threshold = 100 // px
+      const isNearBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight < threshold
+      if (isNearBottom) {
+        container.scrollTop = container.scrollHeight
+      }
     }
   }, [allMessages.length, activeConversationId, streamingContent])
 

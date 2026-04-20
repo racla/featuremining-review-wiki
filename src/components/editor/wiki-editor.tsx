@@ -56,7 +56,7 @@ export function WikiEditor({ content, onSave }: WikiEditorProps) {
 
   return (
     <MilkdownProvider>
-      <div className="prose prose-invert min-w-0 max-w-none overflow-hidden p-6">
+      <div className="prose prose-invert min-w-0 max-w-none overflow-hidden bg-background p-6 text-foreground">
         <WikiEditorInner content={processedContent} onSave={onSave} />
       </div>
     </MilkdownProvider>

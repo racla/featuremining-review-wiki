@@ -151,7 +151,7 @@ function AudioPreview({ filePath, fileName }: { filePath: string; fileName: stri
 function CodePreview({ filePath, content }: { filePath: string; content: string }) {
   const lang = getCodeLanguage(filePath)
   return (
-    <div className="h-full overflow-auto p-6">
+    <div className="h-full overflow-auto bg-background p-6 text-foreground">
       <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
         <span>{filePath}</span>
         <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{lang}</span>
@@ -165,7 +165,7 @@ function CodePreview({ filePath, content }: { filePath: string; content: string 
 
 function TextPreview({ filePath, content, label }: { filePath: string; content: string; label: string }) {
   return (
-    <div className="h-full overflow-auto p-6">
+    <div className="h-full overflow-auto bg-background p-6 text-foreground">
       <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
         <span>{filePath}</span>
         <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{label}</span>
