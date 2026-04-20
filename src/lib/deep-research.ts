@@ -273,6 +273,13 @@ export async function saveResearchDraft(
       // ignore
     }
 
+    // Auto-ingest the saved research result
+    const llmConfig = useWikiStore.getState().llmConfig
+    const { autoIngest } = await import("@/lib/ingest")
+    autoIngest(pp, filePath, llmConfig).catch((err) =>
+      console.error("Failed to auto-ingest research result:", err)
+    )
+
     // Auto-ingest the research result to generate entities, concepts, cross-references
     const ingestPath = normalizePath(`${pp}/${savedPath}`)
     autoIngest(pp, ingestPath, llmConfig).catch((err) => {

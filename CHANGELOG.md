@@ -4,6 +4,16 @@
 
 ---
 
+## v0.6.3 — 2026-04-19
+
+### 修复（Save to Wiki 自动分析提示消失）
+
+- **修复 Save to Wiki 不触发 auto-ingest**：`SaveToWikiButton` 中 `autoIngest` 被 `llmConfig.apiKey` 条件静默跳过，导致左侧活动面板不出现"正在分析"的转圈圈提示。已移除该条件限制 —— 无论 LLM 是否配置，`autoIngest` 都会执行；若未配置，活动项会显示错误反馈而非静默跳过。
+- **修复 Review 面板 Save to Wiki 缺少 auto-ingest**：`review-view.tsx` 中保存内容到 wiki 后未调用 `autoIngest`，已补齐。
+- **修复 Deep Research 保存后缺少 auto-ingest**：`deep-research.ts` 中研究任务保存后未调用 `autoIngest`，已补齐。
+
+---
+
 ## v0.6.2 — 2026-04-19
 
 ### 修复（Markdown 暗色主题 + Save to Wiki 覆盖 + 交互清理）
