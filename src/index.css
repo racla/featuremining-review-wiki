@@ -294,6 +294,50 @@
     }
 }
 
+/* Light mode: Milkdown nord theme defaults to dark palette.
+   Override key elements so they render correctly on light backgrounds. */
+:not(.dark) .milkdown-theme-nord.prose,
+:not(.dark) .milkdown-theme-nord .ProseMirror {
+  color: var(--foreground);
+  background-color: transparent;
+}
+:not(.dark) .milkdown-theme-nord.prose h1,
+:not(.dark) .milkdown-theme-nord.prose h2,
+:not(.dark) .milkdown-theme-nord.prose h3,
+:not(.dark) .milkdown-theme-nord.prose h4,
+:not(.dark) .milkdown-theme-nord.prose h5,
+:not(.dark) .milkdown-theme-nord.prose h6 {
+  color: var(--foreground);
+}
+:not(.dark) .milkdown-theme-nord.prose p,
+:not(.dark) .milkdown-theme-nord.prose li {
+  color: var(--foreground);
+}
+:not(.dark) .milkdown-theme-nord.prose a {
+  color: var(--primary);
+}
+:not(.dark) .milkdown-theme-nord.prose pre {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+:not(.dark) .milkdown-theme-nord.prose code:not(pre code) {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+:not(.dark) .milkdown-theme-nord.prose blockquote {
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+:not(.dark) .milkdown-theme-nord.prose :where(td, th):nth-child(odd) {
+  background-color: var(--muted);
+}
+:not(.dark) .milkdown-theme-nord.prose tr {
+  border-color: var(--border);
+}
+:not(.dark) .milkdown-theme-nord.prose hr {
+  border-color: var(--border);
+}
+
 /* Override Milkdown nord theme light-mode elements when app is in dark mode.
    The nord theme uses @media (prefers-color-scheme: dark) which does not
    match our manual theme switching, causing white/light backgrounds in

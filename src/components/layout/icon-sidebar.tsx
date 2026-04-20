@@ -325,7 +325,7 @@ export function IconSidebar({ onSwitchProject }: IconSidebarProps) {
                 }}
               >
                 <span className="font-medium">{template.name}</span>
-                <span className="text-xs text-white/80">{template.description}</span>
+                <span className="text-xs text-primary-foreground/80">{template.description}</span>
               </Button>
             ))}
           </div>

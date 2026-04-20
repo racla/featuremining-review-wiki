@@ -1,4 +1,4 @@
-export type AppTheme = "default" | "midnight" | "forest" | "plum" | "amber"
+export type AppTheme = "light" | "default" | "midnight" | "forest" | "plum" | "amber"
 
 export interface ThemeConfig {
   key: AppTheme
@@ -10,6 +10,14 @@ export interface ThemeConfig {
 }
 
 export const THEME_PRESETS: ThemeConfig[] = [
+  {
+    key: "light",
+    label: "浅色",
+    labelEn: "Light",
+    description: "白底黑字，经典明亮主题",
+    descriptionEn: "Classic light theme",
+    previewColor: "#f8fafc",
+  },
   {
     key: "default",
     label: "默认",

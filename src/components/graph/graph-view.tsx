@@ -69,6 +69,10 @@ type ColorMode = "type" | "community"
 const BASE_NODE_SIZE = 8
 const MAX_NODE_SIZE = 28
 
+function isDarkMode(): boolean {
+  return document.documentElement.classList.contains("dark")
+}
+
 function nodeColor(type: string): string {
   return NODE_TYPE_COLORS[type] ?? NODE_TYPE_COLORS.other
 }
@@ -140,7 +144,8 @@ function GraphLoader({ nodes, edges, colorMode }: { nodes: GraphNode[]; edges: G
           const size = 0.5 + normalizedWeight * 3.5 // 0.5..4
           // Stronger relationships → darker color
           const alpha = Math.round(40 + normalizedWeight * 180) // 40..220
-          const color = `rgba(100,116,139,${alpha / 255})` // slate-500 with variable opacity
+          const edgeBase = isDarkMode() ? "148,163,184" : "100,116,139"
+          const color = `rgba(${edgeBase},${alpha / 255})`
           graph.addEdgeWithKey(edgeKey, edge.source, edge.target, {
             color,
             size,
@@ -584,11 +589,11 @@ export function GraphView() {
             style={{ width: "100%", height: "100%", background: "transparent" }}
             settings={{
               renderEdgeLabels: true,
-              defaultEdgeColor: "#cbd5e1",
-              defaultNodeColor: "#94a3b8",
+              defaultEdgeColor: isDarkMode() ? "#475569" : "#cbd5e1",
+              defaultNodeColor: isDarkMode() ? "#64748b" : "#94a3b8",
               labelSize: 13,
               labelWeight: "bold",
-              labelColor: { color: "#1e293b" },
+              labelColor: { color: isDarkMode() ? "#f1f5f9" : "#1e293b" },
               labelDensity: 0.4,
               labelRenderedSizeThreshold: 6,
               stagePadding: 30,
@@ -605,7 +610,7 @@ export function GraphView() {
                   result.forceLabel = true
                 }
                 if (attrs.dimmed) {
-                  result.color = mixColor(attrs.color ?? "#94a3b8", "#e2e8f0", 0.75)
+                  result.color = mixColor(attrs.color ?? "#94a3b8", isDarkMode() ? "#0f172a" : "#e2e8f0", 0.75)
                   result.label = ""
                   result.size = (attrs.size ?? BASE_NODE_SIZE) * 0.6
                 }
@@ -614,12 +619,12 @@ export function GraphView() {
               edgeReducer: (_edge, attrs) => {
                 const result = { ...attrs }
                 if (attrs.dimmed) {
-                  result.color = "#f1f5f9"
+                  result.color = isDarkMode() ? "#1e293b" : "#f1f5f9"
                   result.size = 0.3
                 }
                 if (attrs.highlighted) {
                   const w = attrs.weight ?? 1
-                  result.color = "#1e293b"
+                  result.color = isDarkMode() ? "#f8fafc" : "#1e293b"
                   result.size = Math.max(2, (attrs.size ?? 1) * 1.5)
                   result.label = `relevance: ${w.toFixed(1)}`
                   result.forceLabel = true

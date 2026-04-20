@@ -177,9 +177,47 @@ export function ReviewView() {
         resolveItem(id, action)
       }
     } else if (action.startsWith("__create_page__:") && project) {
-      // Explicit create page fallback
+      // Explicit create page fallback — inline the creation logic
       const realAction = action.slice("__create_page__:".length)
-      await createPageFromReview(id, realAction, items, pp)
+      const item = items.find((i) => i.id === id)
+      if (item) {
+        try {
+          const title = item.title.replace(/^(Create|Save|Add)[:\s]*/i, "").trim() || "未命名"
+          const slug = title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)
+          const date = new Date().toISOString().slice(0, 10)
+          const pageType = detectPageType(realAction, item.type)
+          const dir = pageType === "query" ? "queries" : pageType === "entity" ? "entities" : pageType === "concept" ? "concepts" : "queries"
+          const fileName = `${slug}-${date}.md`
+          const filePath = `${pp}/wiki/${dir}/${fileName}`
+          const frontmatter = `---\ntype: ${pageType}\ntitle: "${title.replace(/"/g, '\\"')}"\ncreated: ${date}\ntags: []\nrelated: []\n---\n\n`
+          const body = `# ${title}\n\n${item.description}\n`
+          await writeFile(filePath, frontmatter + body)
+          const indexPath = `${pp}/wiki/index.md`
+          let indexContent = ""
+          try { indexContent = await readFile(indexPath) } catch { indexContent = "# Wiki Index\n" }
+          const sectionHeader = `## ${dir.charAt(0).toUpperCase() + dir.slice(1)}`
+          const entry = `- [[${dir}/${slug}-${date}|${title}]]`
+          if (indexContent.includes(sectionHeader)) {
+            indexContent = indexContent.replace(new RegExp(`(${sectionHeader}\n)`), `$1${entry}\n`)
+          } else {
+            indexContent = indexContent.trimEnd() + `\n\n${sectionHeader}\n${entry}\n`
+          }
+          await writeFile(indexPath, indexContent)
+          const logPath = `${pp}/wiki/log.md`
+          let logContent = ""
+          try { logContent = await readFile(logPath) } catch { logContent = "# Wiki Log\n" }
+          await writeFile(logPath, logContent.trimEnd() + `\n- ${date}: Created ${pageType} page \`${fileName}\` from review\n`)
+          const tree = await listDirectory(pp)
+          setFileTree(tree)
+          useWikiStore.getState().bumpDataVersion()
+          resolveItem(id, `Created: wiki/${dir}/${fileName}`)
+        } catch (err) {
+          console.error("Failed to create page from review:", err)
+          resolveItem(id, "创建失败")
+        }
+      } else {
+        resolveItem(id, action)
+      }
     } else if (actionLooksLikeCreate(action) && project) {
       // Create a wiki page from the review item's content
       const item = items.find((i) => i.id === id)
@@ -345,9 +383,9 @@ function ReviewCard({
               🔍 Deep Research
             </Button>
           )}
-          {item.options.map((opt) => (
+          {item.options.map((opt, idx) => (
             <Button
-              key={opt.action}
+              key={`${opt.action}-${idx}`}
               variant="outline"
               size="sm"
               className="h-7 text-xs"

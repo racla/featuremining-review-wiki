@@ -28,12 +28,19 @@ function App() {
 
   // Set up auto-save and clip watcher once on mount
   useEffect(() => {
-    document.documentElement.classList.add("dark")
     setupAutoSave()
     startClipWatcher()
     return () => {
       teardownAutoSave()
       stopClipWatcher()
+    }
+  }, [])
+
+  // Apply initial theme (dark class handled by setAppTheme in store)
+  useEffect(() => {
+    const appTheme = useWikiStore.getState().appTheme
+    if (appTheme !== "light") {
+      document.documentElement.classList.add("dark")
     }
   }, [])
 

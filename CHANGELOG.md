@@ -4,6 +4,24 @@
 
 ---
 
+## v0.6.7 — 2026-04-20
+
+### 新增（浅色主题）
+
+- **新增浅色主题（Light）**：设置面板 → 外观 → 浅色，白底黑字经典明亮主题。
+- **全应用主题联动**：切换浅色/暗色时，以下组件自动适配：
+  - **关系图（Graph View）**：节点标签、边线、高亮颜色根据模式自动切换深浅
+  - **Markdown 编辑器（Milkdown）**：light 模式下显示黑字，dark 模式下显示白字
+  - **文件预览**：`dark:prose-invert` 条件触发，light 下正常渲染
+  - **Deep Research 面板**：合成结果预览同样条件适配
+  - **Milkdown nord 主题覆盖**：新增 `:not(.dark) .milkdown-theme-nord` 规则，覆盖暗色默认样式
+- **`.dark` 类自动管理**：`setAppTheme` 在 store 层直接操作 `document.documentElement.classList`，light 时移除 `.dark`，其他主题时添加。`App.tsx` 初始化时同步一次。
+
+### 修复（Review 面板 + 代码质量）
+
+- **修复 `createPageFromReview` 未定义**：`review-view.tsx` 中 `__create_page__:` 分支调用了不存在的函数，现在内联处理。
+- **ReviewCard button key 唯一化**：`key={opt.action}` 在 option action 重复时会冲突，改为 `key={\`${opt.action}-${idx}\`}`。
+
 ## v0.6.6 — 2026-04-19
 
 ### 修复（Save to Wiki / Deep Research 卡死 + Activity 面板）

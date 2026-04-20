@@ -85,7 +85,7 @@ export function AppLayout({ onSwitchProject }: AppLayoutProps) {
   const hasRightPanel = !!(selectedFile || researchPanelOpen)
 
   return (
-    <div className="flex h-screen bg-background text-foreground" data-theme={appTheme === "default" ? undefined : appTheme}>
+    <div className="flex h-screen bg-background text-foreground" data-theme={appTheme === "light" || appTheme === "default" ? undefined : appTheme}>
       <IconSidebar onSwitchProject={onSwitchProject} />
       <div ref={containerRef} className="flex min-w-0 flex-1 overflow-hidden">
         {/* Left: File tree + Activity */}

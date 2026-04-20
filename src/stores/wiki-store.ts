@@ -90,7 +90,14 @@ export const useWikiStore = create<WikiState>((set) => ({
   setSearchApiConfig: (searchApiConfig) => set({ searchApiConfig }),
   setEmbeddingConfig: (embeddingConfig) => set({ embeddingConfig }),
   bumpDataVersion: () => set((state) => ({ dataVersion: state.dataVersion + 1 })),
-  setAppTheme: (appTheme) => set({ appTheme }),
+  setAppTheme: (appTheme) => {
+    if (appTheme === "light") {
+      document.documentElement.classList.remove("dark")
+    } else {
+      document.documentElement.classList.add("dark")
+    }
+    set({ appTheme })
+  },
 }))
 
 export type { WikiState, LlmConfig, SearchApiConfig, EmbeddingConfig }

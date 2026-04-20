@@ -147,7 +147,7 @@ function SynthesisBlock({ synthesis, isStreaming }: { synthesis: string; isStrea
       <div className="mb-1 font-medium text-muted-foreground">Synthesis</div>
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto rounded bg-muted/30 p-2 prose prose-xs prose-invert max-w-none"
+        className="flex-1 overflow-y-auto rounded bg-muted/30 p-2 prose prose-xs dark:prose-invert max-w-none"
         style={{ maxHeight: "calc(100vh - 400px)", minHeight: "120px" }}
       >
         {thinking && (
@@ -324,7 +324,7 @@ function ResearchTaskCard({ task, onRemove }: { task: ResearchTask; onRemove: (i
           {task.status === "pending_review" && task.draftContent && (
             <div className="mb-2">
               <div className="mb-1 font-medium text-muted-foreground">合成结果预览</div>
-              <div className="rounded bg-muted/30 p-2 prose prose-xs prose-invert max-w-none" style={{ maxHeight: "calc(100vh - 420px)", minHeight: "120px", overflowY: "auto" }}>
+              <div className="rounded bg-muted/30 p-2 prose prose-xs dark:prose-invert max-w-none" style={{ maxHeight: "calc(100vh - 420px)", minHeight: "120px", overflowY: "auto" }}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex]}
