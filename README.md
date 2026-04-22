@@ -40,7 +40,7 @@
 - **Stock Archives** — LLM routes stock insights to `wiki/股票/` instead of generic `entities/`
 - **Image Support** — Send screenshots in chat, preview PNG / JPG / GIF in the preview panel
 - **Theme Switching** — 5 preset color themes (Midnight Blue, Forest Green, Deep Plum, Warm Amber) for different trading moods
-- **Wiki Reorganize Script** — Bulk-move misplaced root-level pages into typed directories. Handy when LLM puts files in the wrong place. [Script](scripts/reorganize-wiki.cjs) · [When to use & How to use](scripts/README.md)
+- **Wiki Doctor** — Auto-scan and reorganize wiki directory structure: unify mixed link formats (`[[英维克]]` → `[[股票/英维克]]`), move loose root files to typed directories, detect pinyin filenames for rename suggestions, resolve file conflicts with manual confirmation, and auto-backup before any changes.
 - **OpenClaw Collaboration** — Automated daily market review at 18:00 via OpenClaw multi-agent system. See [collab/README.md](collab/README.md) for setup.
 
 ### OpenClaw Collaboration (Optional)
